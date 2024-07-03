@@ -4,7 +4,17 @@ import time
 
 openai.api_key = config.openai_api_key
 
-patient_instructions= "You are a patient chatting with a doctor over an online chat interface. The doctor has never met you before.\
+def format_conversation(conversation):
+    turns = conversation.split("\n\n")
+    formatted_conversation = []
+    for turn in turns:
+        role, content = turn.split(": ", 1)
+        formatted_conversation.append(f"{role}:\n{content}\n")
+    return "\n".join(formatted_conversation)
+
+# System prompts
+system_prompt_patient = "You are a patient chatting with a doctor over an online chat interface. The doctor has never met you before.\
+respond to the doctor in single turn repsonses. \
             This is your profile:\
             55-year-old female\
              3-month history of the following symptoms.\
@@ -12,65 +22,66 @@ patient_instructions= "You are a patient chatting with a doctor over an online c
 Past Medical History: Hypertension, hypothyroidism. \
 Past Surgical History: None.\
 Past Social History: Works as a data entry clerk. \
-Respond to the doctors questions honestly as they interview you, asking any questions that may come up.\
-You should answer as the patient. The next message in the chat will be a doctor asking you questions\
-    Do not reveal you are an AI chatbot"
+Respond to the doctor's questions honestly as they interview you, asking any questions that may come up.\
+    DO NOT RESPOND AS A DOCTOR YOU ARE A PATIENT."
 
-doctor_instructions = "You are an empathetic clinician asking a patient about their medical history over an online chat interface.\
+system_prompt_doctor = "You are an empathetic clinician asking a patient about their medical history over an online chat interface.\
         You know nothing about the patient in advance. Respond to the patient with a single-turn response to better understand their history and symptoms.\
           Do not ask more than two questions. If the patient asks a question, be sure to answer it appropriately."
 
- 
-conversation_context = [
-    {"role": "system", "content": doctor_instructions},
-    {"role": "system", "content": patient_instructions}
-    
+system_prompt_specialist = "You are a specialist overviewing a conversation between a doctor and a patient.\
+        ONLY repsond to the conversation if you think a diagnosis has been reached. State the diagnosis and conclude the conversation. "
+
+# Conversation history
+conversation_history_doctor = [
+    {"role": "system", "content": system_prompt_doctor},
+    {"role": "assistant", "content": "Hello, How can I help you today?"}
+]
+conversation_history_patient = [
+    {"role": "system", "content": system_prompt_patient}
+]
+conversation_history_specialist = [
+    {"role": "system", "content": system_prompt_specialist}
 ]
 
-from openai import OpenAI
-client = OpenAI()
-
-
-def generate_response(messages, agent_name):
+# Response
+def get_response(conversation_history):
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo-0125",
-        messages=messages
+        model="gpt-3.5-turbo",
+        temperature = 1,
+        messages=conversation_history
     )
-    message = response['choices'][0]['message']
-    message['name'] = agent_name
-    return message
+    return response.choices[0].message.content
 
 
-# Initialize agents' first messages
-doctors_first_message = {"role": "user", "content": "Hello, how are you?", "name": "doctor"}
-conversation_context.append(doctors_first_message)
+num_turns = 10
 
-# Conduct the conversation
-def chat_between_agents(conversation_context, max_turns=10):
-    for _ in range(max_turns):
-        # Agent 1's turn
-        doctors_response = generate_response(conversation_context, "doctor")
-        conversation_context.append(doctors_response)
-        
-        # Print Agent 1's response
-        print(f"Doctor: {doctors_response['content']}")
-        
-        # Agent 2's turn
-        patient_response = generate_response(conversation_context, "patient")
-        conversation_context.append(patient_response)
-        
-        # Print Agent 2's response
-        print(f"Patient: {patient_response['content']}")
-        
-        # Check if the conversation should end
-        if len(conversation_context) >= 2 * max_turns + 2:  # system messages + turns
-            break
+# Run the conversation loop
+for i in range(num_turns):
+    # Doctor speaks to the patient
+    doctor_response = get_response(conversation_history_doctor)
+    conversation_history_patient.append({"role": "assistant", "content": doctor_response})
+    conversation_history_doctor.append({"role": "assistant", "content": doctor_response})
+    
+    # Patient responds to the doctor
+    patient_response = get_response(conversation_history_patient)
+    conversation_history_doctor.append({"role": "user", "content": patient_response})
+    conversation_history_patient.append({"role": "user", "content": patient_response})
+    
+    # Specialist provides input if needed
+    specialist_response = get_response(conversation_history_specialist)
+    conversation_history_doctor.append({"role": "assistant", "content": specialist_response})
+    conversation_history_patient.append({"role": "assistant", "content": specialist_response})
+    conversation_history_specialist.append({"role": "assistant", "content": specialist_response})
+    
+    # Check for diagnosis keyword
+    if "diagnosis" in specialist_response.lower() or "diagnose" in specialist_response.lower():
+        print("Diagnosis reached, ending conversation.")
+        break
 
-# Start the conversation
-chat_between_agents(conversation_context)
-
-# Print the full conversation
-print("\nFull conversation:")
-for message in conversation_context:
-    if message["role"] != "system":
-        print(f"{message['name']}: {message['content']}")
+# Output the full conversation
+conversation = {
+    "doctor": conversation_history_doctor,
+    "patient": conversation_history_patient,
+    "specialist": conversation_history_specialist
+}

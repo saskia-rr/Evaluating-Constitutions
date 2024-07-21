@@ -133,14 +133,13 @@ def main():
 
     critic_instructions = "You are an AI critic providing feedback to a doctor after they have completed a conversation with a patient. \
     All of the previous conversation is the completed conversation. \
-    Provide feedback based on the following dimensions: Fostering the relationship, Gathering inofrmation, \
-    Providing information, making decisions,\
-    Enabling Disease and Treatment-Related Behavior, Responding to Emotions.\
+    Give feedback as you see fit.\
     Your feedback will only be seen by the doctor. Give you feedback in 100 words or less"
 
     doctor = Doctor(client, model, temperature, doctor_instructions, max_tokens)
     patient = Patient(client, model, temperature, patient_instructions, max_tokens)
-    critic = Critic(client, model, temperature, critic_instructions, max_tokens)
+    critic = Critic(client, model, temperature, critic_instructions, max_tokens) 
+
 
     conversation = Conversation(doctor, patient, critic)
     doctor_context, patient_context = conversation.chat_between_agents(max_turns=3, critic_frequency=5)

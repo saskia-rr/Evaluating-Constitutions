@@ -1,35 +1,9 @@
-class Agent(ABC):
-    def __init__(self, client, model, temperature, system_instructions, max_tokens):
-        self.client = client
-        self.model = model
-        self.temperature = temperature
-        self.system_instructions = system_instructions
-        self.max_tokens = max_tokens
-        self.conversation_context = []
-
-    def generate_response(self, messages):
-        response = self.client.messages.create(
-            model=self.model,
-            temperature=self.temperature,
-            system=self.system_instructions,
-            max_tokens=self.max_tokens,
-            messages=messages
-        )
-        return {"role": "assistant", "content": response.content[0].text}
-    def add_to_context(self, response, role):
-        if role == "user":
-            self.conversation_context.append({"role": "user", "content": response["content"]})
-        else:
-            self.conversation_context.append(response)
-
-            
+import os
+import config
+import anthropic 
 
 
-
-
-from abc import ABC
-
-class Agent(ABC):
+class Agent():
     def __init__(self, client, model, temperature, system_instructions, max_tokens):
         self.client = client
         self.model = model
@@ -92,9 +66,9 @@ class Conversation:
             # Reset only the patient's context
             self.patient.conversation_context = [{"role": "user", "content": "Hello, how can I help you today?"}]
             
-            # If it's the first iteration, initialize the doctor's context
-            if iteration == 0:
-                self.doctor.conversation_context = [{"role": "assistant", "content": "Hello, how can I help you today?"}]
+            # # If it's the first iteration, initialize the doctor's context
+            # if iteration == 0:
+            #     self.doctor.conversation_context = [{"role": "assistant", "content": "Hello, how can I help you today?"}]
 
             for turn in range(critic_frequency):
                 # Patient's turn
@@ -130,10 +104,36 @@ class Conversation:
         return self.doctor.conversation_context, self.patient.conversation_context
 
 def main():
-    client = None  # Initialize your client here
+
+    os.environ["ANTHROPIC_API_KEY"] = config.claude_api_key
+    client = anthropic.Anthropic()
     model = "claude-3-5-sonnet-20240620"
     temperature = 1
     max_tokens = 1000
+
+    patient_instructions = "You are a patient chatting with a doctor over an online chat interface. The doctor has never met you before. \
+    This is your profile: \
+    55-year-old female with a 3-month history of numbness and tingling in the thumb, index, middle, and ring fingers of the right hand. \
+    The numbness is worse at night and wakes you up from sleep. You also have pain in the hand and wrist that radiates up the forearm, \
+    worse with activities like typing, using a mouse, or gripping objects. \
+    Past Medical History includes hypertension and hypothyroidism. \
+    You work as a data entry clerk. \
+    Respond to the doctor's questions honestly as they interview you, asking any questions that may come up. \
+    You should answer as the patient. \
+    Do not act as a doctor. \
+    Do not reveal you are an AI chatbot.\
+    Give your responses in 60 words or less"
+
+    doctor_instructions = "You are an clinician asking a patient about their medical history over an online chat interface. \
+    You know nothing about the patient in advance. Respond to the patient with a single-turn response to better understand their history and symptoms. \
+    Do not ask more than two questions. If the patient asks a question, be sure to answer it appropriately. Do not tell the patient to see a healthcare provider.Do not reveal you are an AI bot. Give your repsonses in 70 words or less"
+
+    critic_instructions = "You are an AI critic providing feedback to a doctor after they have completed a conversation with a patient. \
+    All of the previous conversation is the completed conversation. \
+    Provide feedback based on the following dimensions: Fostering the relationship, Gathering inofrmation, \
+    Providing information, making decisions,\
+    Enabling Disease and Treatment-Related Behavior, Responding to Emotions.\
+    Your feedback will only be seen by the doctor. Give you feedback in 100 words or less"
 
     doctor = Doctor(client, model, temperature, doctor_instructions, max_tokens)
     patient = Patient(client, model, temperature, patient_instructions, max_tokens)

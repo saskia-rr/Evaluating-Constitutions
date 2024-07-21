@@ -2,6 +2,9 @@ import os
 import config
 import anthropic 
 
+os.environ["ANTHROPIC_API_KEY"] = config.claude_api_key
+client = anthropic.Anthropic()
+
 
 class Agent():
     def __init__(self, client, model, temperature, system_instructions, max_tokens):

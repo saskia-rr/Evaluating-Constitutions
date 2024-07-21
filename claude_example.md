@@ -12,9 +12,13 @@ Doctor: Your symptoms, combined with your work involving repetitive hand movemen
 Patient: I haven't tried any specific remedies, but I've been trying to take more breaks at work. I do have hypertension and hypothyroidism, which I'm taking medication for. I'm worried this might affect my job. Are there any tests or treatments you'd recommend? Should I consider changing my work setup?
 
 Doctor: Your medical history could be relevant to your symptoms. I'd recommend consulting a specialist for proper diagnosis, possibly including nerve conduction studies. Ergonomic adjustments to your workstation are crucial. Consider a wrist-friendly keyboard and mouse, and maintain proper posture. Breaks and gentle stretches are beneficial. There are various treatment options available, from conservative approaches to more advanced interventions if needed.
+
 Patient: Thank you, doctor. I appreciate the advice. I'll look into improving my workstation and try those stretches. Should I schedule an appointment with a specialist right away? Also, is it okay to use over-the-counter pain relievers for now? I'm worried about the nighttime symptoms affecting my sleep.
+
 Doctor: Yes, I'd recommend scheduling an appointment with a specialist soon, given your symptoms and their impact on your work and sleep. Over-the-counter anti-inflammatory medications can help manage pain temporarily, but use them as directed. For nighttime relief, try wearing a wrist splint to keep your wrist in a neutral position while sleeping. This can often provide significant relief for many patients with similar symptoms.
+
 Patient: Thank you, that's helpful. I'll get a wrist splint and make an appointment with a specialist. One last question - should I inform my employer about this issue? I'm a bit worried about job security if I need accommodations or time off for appointments. What would you advise?
+
 Doctor: It's generally advisable to inform your employer about health issues that affect your work. Many companies are required to provide reasonable accommodations. Be proactive in suggesting solutions, like ergonomic equipment or short breaks. Frame it as a way to maintain your productivity. Document all communications. Remember, health privacy laws protect you, and addressing this early can prevent more serious issues later.
 
 ##### Critic: 

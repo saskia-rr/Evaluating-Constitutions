@@ -1,87 +1,75 @@
-import openai
-import config
-import time
+from openai import OpenAI
 
-openai.api_key = config.openai_api_key
+# Initialize OpenAI client
+client = OpenAI()
 
-def format_conversation(conversation):
-    turns = conversation.split("\n\n")
-    formatted_conversation = []
-    for turn in turns:
-        role, content = turn.split(": ", 1)
-        formatted_conversation.append(f"{role}:\n{content}\n")
-    return "\n".join(formatted_conversation)
+class Agent:
+    def __init__(self, role, instructions, model):
+        self.role = role
+        self.instructions = instructions
+        self.context = [{"role": "system", "content": self.instructions}]
+        self.name = role.lower()
+        self.model =  model
 
-# System prompts
-system_prompt_patient = "You are a patient chatting with a doctor over an online chat interface. The doctor has never met you before.\
-respond to the doctor in single turn repsonses. \
-            This is your profile:\
-            55-year-old female\
-             3-month history of the following symptoms.\
-            Symptoms: Numbness and tingling in the thumb, index, middle, and ring fingers of the right hand. The numbness is worse at night and wakes her up from sleep. She also has pain in the hand and wrist that radiates up the forearm. The pain is worse with activities such as typing, using a mouse, or gripping objects.\
-Past Medical History: Hypertension, hypothyroidism. \
-Past Surgical History: None.\
-Past Social History: Works as a data entry clerk. \
-Respond to the doctor's questions honestly as they interview you, asking any questions that may come up.\
-    DO NOT RESPOND AS A DOCTOR YOU ARE A PATIENT."
+    def add_message(self, message):
+        self.context.append(message)
 
-system_prompt_doctor = "You are an empathetic clinician asking a patient about their medical history over an online chat interface.\
-        You know nothing about the patient in advance. Respond to the patient with a single-turn response to better understand their history and symptoms.\
-          Do not ask more than two questions. If the patient asks a question, be sure to answer it appropriately."
+    def generate_response(self):
+        response = client.chat.completions.create(
+            model= self.model,
+            temperature=1,
+            messages=self.context
+        )
+        assistant_message = {"role": "assistant", "content": response.choices[0].message.content, "name": self.name}
+        user_message = {"role": "user", "content": response.choices[0].message.content, "name": self.name}
+        self.add_message(assistant_message)
+        return assistant_message, user_message
 
-system_prompt_specialist = "You are a specialist overviewing a conversation between a doctor and a patient.\
-        ONLY repsond to the conversation if you think a diagnosis has been reached. State the diagnosis and conclude the conversation. "
+class Moderator:
+    @staticmethod
+    def check_for_termination(conversation):
+        for message in conversation:
+            if if "goodbye" in message["content"].lower() or "have a great day" in message["content"].lower():
+                return True
+        return False
 
-# Conversation history
-conversation_history_doctor = [
-    {"role": "system", "content": system_prompt_doctor},
-    {"role": "assistant", "content": "Hello, How can I help you today?"}
-]
-conversation_history_patient = [
-    {"role": "system", "content": system_prompt_patient}
-]
-conversation_history_specialist = [
-    {"role": "system", "content": system_prompt_specialist}
-]
+class ChatSimulation:
+    def __init__(self, doctor, patient, critic, max_turns=20):
+        self.doctor = doctor
+        self.patient = patient
+        self.critic = critic
+        self.max_turns = max_turns
 
-# Response
-def get_response(conversation_history):
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        temperature = 1,
-        messages=conversation_history
-    )
-    return response.choices[0].message.content
+    def start_conversation(self):
+        # Initialize agents' first messages
+        initial_message = {"role": "assistant", "content": "Hello, how are you?", "name": "doctor"}
+        self.doctor.add_message(initial_message)
+        self.patient.add_message({"role": "user", "content": initial_message["content"], "name": "doctor"})
+
+        for _ in range(self.max_turns):
+            # Patient's turn
+            patient_response = self.patient.generate_response()
+            self.doctor.add_message(patient_response[1])
+            print(f"Patient: {patient_response[0]['content']}")
+
+            if Moderator.check_for_termination(self.patient.context):
+                print("Moderator: Conversation ended as patient said goodbye.")
+                break
+
+            # Doctor's turn
+            doctor_response = self.doctor.generate_response()
+            self.patient.add_message(doctor_response[1])
+            print(f"Doctor: {doctor_response[0]['content']}")
+
+            if Moderator.check_for_termination(self.doctor.context):
+                print("Moderator: Conversation ended as doctor said goodbye.")
+                break
+
+            # Critic's feedback
+            critic_feedback = self.critic.generate_response()
+            self.critic.add_message({"role": "user", "content": doctor_response[0]["content"], "name": "doctor"})
+            print(f"Critic: {critic_feedback[0]['content']}")
+
+        return self.doctor.context, self.patient.context
 
 
-num_turns = 10
-
-# Run the conversation loop
-for i in range(num_turns):
-    # Doctor speaks to the patient
-    doctor_response = get_response(conversation_history_doctor)
-    conversation_history_patient.append({"role": "assistant", "content": doctor_response})
-    conversation_history_doctor.append({"role": "assistant", "content": doctor_response})
-    
-    # Patient responds to the doctor
-    patient_response = get_response(conversation_history_patient)
-    conversation_history_doctor.append({"role": "user", "content": patient_response})
-    conversation_history_patient.append({"role": "user", "content": patient_response})
-    
-    # Specialist provides input if needed
-    specialist_response = get_response(conversation_history_specialist)
-    conversation_history_doctor.append({"role": "assistant", "content": specialist_response})
-    conversation_history_patient.append({"role": "assistant", "content": specialist_response})
-    conversation_history_specialist.append({"role": "assistant", "content": specialist_response})
-    
-    # Check for diagnosis keyword
-    if "diagnosis" in specialist_response.lower() or "diagnose" in specialist_response.lower():
-        print("Diagnosis reached, ending conversation.")
-        break
-
-# Output the full conversation
-conversation = {
-    "doctor": conversation_history_doctor,
-    "patient": conversation_history_patient,
-    "specialist": conversation_history_specialist
-}

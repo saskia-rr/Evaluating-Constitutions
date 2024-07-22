@@ -2,6 +2,7 @@ import os
 import config
 import anthropic 
 import datetime
+import json
 
 os.environ["ANTHROPIC_API_KEY"] = config.claude_api_key
 client = anthropic.Anthropic()
@@ -127,52 +128,78 @@ class Conversation:
             self.doctor.add_to_context({"role": "assistant", "content": "I understand and have acknowledged the feedback. I will incorporate it into the following conversation"}, "assistant")
 
         return self.doctor.conversation_context, self.patient.conversation_context, dialogue
+    
+
+class ExperimentRunner:
+    @staticmethod
+    def load_instructions(file_path):
+        with open(file_path, 'r') as file:
+            return json.load(file)
+
+    @staticmethod
+    def create_agents(client, model, temperature, max_tokens, doctor_instructions, patient_instructions, critic_instructions):
+        doctor = Doctor(client, model, temperature, doctor_instructions, max_tokens)
+        patient = Patient(client, model, temperature, patient_instructions, max_tokens)
+        critic = Critic(client, model, temperature, critic_instructions, max_tokens)
+
+        return doctor, patient, critic
+
+    @staticmethod
+    def run_experiment(doctor, patient, critic, max_turns, critic_frequency, model, experiment_name):
+        conversation = Conversation(doctor, patient, critic)
+        doctor_context, patient_context, dialogue = conversation.chat_between_agents(max_turns, critic_frequency)
+        Conversation.save_full_conversation_to_markdown(dialogue, f"full_conversations/{model}/{experiment_name}", experiment_name)
+
 
 
 def main():
 
     os.environ["ANTHROPIC_API_KEY"] = config.claude_api_key
     client = anthropic.Anthropic()
-    model = "claude-3-haiku-20240307"
+
+    model = "claude-3-5-sonnet-20240620"
     temperature = 1
     max_tokens = 1000
-
     max_turns = 3
-    critic_frequency = 2
+    critic_frequency = 5
 
-    patient_instructions = "You are a patient chatting with a doctor over an online chat interface. The doctor has never met you before. \
-    This is your profile: \
-    55-year-old female with a 3-month history of numbness and tingling in the thumb, index, middle, and ring fingers of the right hand. \
-    The numbness is worse at night and wakes you up from sleep. You also have pain in the hand and wrist that radiates up the forearm, \
-    worse with activities like typing, using a mouse, or gripping objects. \
-    Past Medical History includes hypertension and hypothyroidism. \
-    You work as a data entry clerk. \
-    Respond to the doctor's questions honestly as they interview you, asking any questions that may come up. \
-    You should answer as the patient. \
-    Do not act as a doctor. \
-    Do not reveal you are an AI chatbot.\
-    Give your responses in 60 words or less"
+    # Load instructions from files
+    doctor_instructions = ExperimentRunner.load_instructions('doctor_instructions.json')
+    patient_instructions = ExperimentRunner.load_instructions('patient_instructions.json')
+    critic_instructions = ExperimentRunner.load_instructions('critic_instructions.json')
 
-    doctor_instructions = "You are an clinician asking a patient about their medical history over an online chat interface. \
-    You know nothing about the patient in advance. Respond to the patient with a single-turn response to better understand their history and symptoms. \
-    Do not ask more than two questions. If the patient asks a question, be sure to answer it appropriately. Do not tell the patient to see a healthcare provider.Do not reveal you are an AI bot. Give your repsonses in 70 words or less"
+    # Create a list of experiments to run
+    experiments = [
+        {
+            "name": "best_practices_loose",
+            "doctor": doctor_instructions["default"],
+            "patient": patient_instructions["carpel_tunnel"],
+            "critic": critic_instructions["best_practices_loose"]
+        },
+        {
+            "name": "pirate",
+            "doctor": doctor_instructions["default"],
+            "patient": patient_instructions["carpel_tunnel"],
+            "critic": critic_instructions["pirate"]
+        },
+                {
+            "name": "selfdefined",
+            "doctor": doctor_instructions["default"],
+            "patient": patient_instructions["carpel_tunnel"],
+            "critic": critic_instructions["selfdefined"]
+        }
+    ]
 
-    critic_instructions = "You are an AI critic providing feedback to a doctor after they have completed a conversation with a patient. \
-    All of the previous conversation is the completed conversation. \
-    Give feedback as you see fit.\
-    Your feedback will only be seen by the doctor. Give you feedback in 100 words or less"
-
-    doctor = Doctor(client, model, temperature, doctor_instructions, max_tokens)
-    patient = Patient(client, model, temperature, patient_instructions, max_tokens)
-    critic = Critic(client, model, temperature, critic_instructions, max_tokens) 
-
-
-    conversation = Conversation(doctor, patient, critic)
-
-    doctor_context, patient_context, dialogue = conversation.chat_between_agents(max_turns, critic_frequency)
-
-    Conversation.save_full_conversation_to_markdown(dialogue, "full_conversations/claude_haiku/selfdefined", "selfdefined")
-
+    for experiment in experiments:
+        print(f"Running experiment: {experiment['name']}")
+        doctor, patient, critic = ExperimentRunner.create_agents(
+            client, model, temperature, max_tokens, 
+            experiment['doctor'], experiment['patient'], experiment['critic']
+        )
+        ExperimentRunner.run_experiment(
+            doctor, patient, critic, max_turns, critic_frequency, model, experiment['name']
+        )
+        print(f"Experiment {experiment['name']} completed.\n")
 
 if __name__ == "__main__":
     main()

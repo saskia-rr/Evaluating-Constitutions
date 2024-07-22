@@ -1,6 +1,7 @@
 from openai import OpenAI
 import config
 import os
+import datetime
 
 
 
@@ -56,6 +57,22 @@ class Conversation:
             content = message['content']
             readable_string += f"{role}: {content}\n"
         return readable_string.strip()
+    
+        
+    @staticmethod
+    def save_full_conversation_to_markdown(dialogue, folder_path, experiment):
+        os.makedirs(folder_path, exist_ok=True)
+        
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{experiment}_{timestamp}.md"
+        file_path = os.path.join(folder_path, filename)
+        
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("# Full Doctor-Patient Conversation\n\n")
+            for line in dialogue:
+                f.write(line)
+        
+        print(f"Full conversation saved to: {file_path}")
 
     @staticmethod
     def moderator_check(conversation):
@@ -65,8 +82,12 @@ class Conversation:
         return False
 
     def chat_between_agents(self, max_turns=10, critic_frequency=5):
+        dialogue = []
         for iteration in range(max_turns):
             print(f"\n--- Iteration {iteration + 1} ---")
+            dialogue.append(f"\n ## --- Iteration {iteration + 1} ---\n\n")
+
+            dialogue.append(f"Doctor: Hello, how can I help you today? \n\n")
             
             # Reset only the patient's context
             self.patient.conversation_context = [
@@ -80,18 +101,18 @@ class Conversation:
                 self.patient.add_to_context(patient_response, "assistant")
                 self.doctor.add_to_context(patient_response, "user")
                 
-                print(f"Patient: {patient_response['content']}")
+                dialogue.append(f"Patient: {patient_response['content']}\n\n")
                 
                 if self.moderator_check(self.patient.conversation_context):
                     print("Moderator: Conversation ended as patient said goodbye.")
-                    return self.doctor.conversation_context, self.patient.conversation_context
+                    return self.doctor.conversation_context, self.patient.conversation_context, dialogue
 
                 # Doctor's turn
                 doctor_response = self.doctor.generate_response(self.doctor.conversation_context)
                 self.doctor.add_to_context(doctor_response, "assistant")
                 self.patient.add_to_context(doctor_response, "user")
 
-                print(f"Doctor: {doctor_response['content']}")
+                dialogue.append(f"Doctor: {doctor_response['content']}\n\n")
 
             # Critic's turn
             doctor_patient_dialogue = self.conversation_to_string(self.patient.conversation_context)
@@ -102,13 +123,13 @@ class Conversation:
             critic_feedback = self.critic.generate_response(critic_context)
             self.critic.add_to_context(critic_feedback, "assistant")
 
-            print(f"\nCritic: {critic_feedback['content']}")
+            dialogue.append(f"\n #### Critic:\n {critic_feedback['content']}\n\n")
 
             critic_feedback_to_doctor = f"Here is some feedback on your previous interaction with the patient\n{critic_feedback['content']}\nThe conversation with the patient will start again. Incorporate the feedback given into your responses"
             self.doctor.add_to_context({"role": "user", "content": critic_feedback_to_doctor}, "user")
             self.doctor.add_to_context({"role": "assistant", "content": "I understand and have acknowledged the feedback. I will incorporate it into the following conversation"}, "assistant")
 
-        return self.doctor.conversation_context, self.patient.conversation_context
+        return self.doctor.conversation_context, self.patient.conversation_context, dialogue
 
 def main():
 
@@ -145,7 +166,8 @@ def main():
     critic = Critic(client, model, temperature, critic_instructions, max_tokens)
 
     conversation = Conversation(doctor, patient, critic)
-    doctor_context, patient_context = conversation.chat_between_agents(max_turns=3, critic_frequency=5)
+    doctor_context, patient_context, dialogue = conversation.chat_between_agents(max_turns=3, critic_frequency=5)
+    Conversation.save_full_conversation_to_markdown(dialogue, "full_conversations/gpt_4o/selfdefined", "selfdefined")
 
 if __name__ == "__main__":
     main()

@@ -105,7 +105,7 @@ class Conversation:
                 
                 if self.moderator_check(self.patient.conversation_context):
                     print("Moderator: Conversation ended as patient said goodbye.")
-                    return self.doctor.conversation_context, self.patient.conversation_context
+                    return self.doctor.conversation_context, self.patient.conversation_context, dialogue
 
                 # Doctor's turn
                 doctor_response = self.doctor.generate_response(self.doctor.conversation_context)
@@ -120,7 +120,7 @@ class Conversation:
             critic_feedback = self.critic.generate_response(critic_context)
             self.critic.add_to_context(critic_feedback, "assistant")
 
-            dialogue.append(f"\n ##### Critic:\n {critic_feedback['content']}\n\n")
+            dialogue.append(f"\n #### Critic:\n {critic_feedback['content']}\n\n")
 
             critic_feedback_to_doctor = f"Here is some feedback on your previous interaction with the patient\n{critic_feedback['content']}\nThe conversation with the patient will start again. Incorporate the feedback given into your responses"
             self.doctor.add_to_context({"role": "user", "content": critic_feedback_to_doctor}, "user")
@@ -171,7 +171,7 @@ def main():
 
     doctor_context, patient_context, dialogue = conversation.chat_between_agents(max_turns, critic_frequency)
 
-    Conversation.save_full_conversation_to_markdown(dialogue, "full_conversations/selfdefined", "selfdefined")
+    Conversation.save_full_conversation_to_markdown(dialogue, "full_conversations/claude_haiku/selfdefined", "selfdefined")
 
 
 if __name__ == "__main__":

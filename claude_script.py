@@ -83,12 +83,13 @@ class Conversation:
     def chat_between_agents(self, max_turns=10, critic_frequency=5):
         dialogue = []
         for iteration in range(max_turns):
-            dialogue.append(f"\n--- Iteration {iteration + 1} ---\n")
+            print(f"\n --- Iteration {iteration + 1} ---\n\n")
+            dialogue.append(f"\n ## --- Iteration {iteration + 1} ---\n\n")
             
             # Reset only the patient's context
             self.patient.conversation_context = [{"role": "user", "content": "Hello, how can I help you today?"}]
 
-            dialogue.append(f"Doctor: Hello, how can I help you today? \n")
+            dialogue.append(f"Doctor: Hello, how can I help you today? \n\n")
             
             # # If it's the first iteration, initialize the doctor's context
             # if iteration == 0:
@@ -100,7 +101,7 @@ class Conversation:
                 self.patient.add_to_context(patient_response, "assistant")
                 self.doctor.add_to_context(patient_response, "user")
                 
-                dialogue.append(f"Patient: {patient_response['content']}\n")
+                dialogue.append(f"Patient: {patient_response['content']}\n\n")
                 
                 if self.moderator_check(self.patient.conversation_context):
                     print("Moderator: Conversation ended as patient said goodbye.")
@@ -111,7 +112,7 @@ class Conversation:
                 self.doctor.add_to_context(doctor_response, "assistant")
                 self.patient.add_to_context(doctor_response, "user")
 
-                dialogue.append(f"Doctor: {doctor_response['content']}\n")
+                dialogue.append(f"Doctor: {doctor_response['content']}\n\n")
 
             # Critic's turn
             doctor_patient_dialogue = self.conversation_to_string(self.patient.conversation_context)
@@ -119,7 +120,7 @@ class Conversation:
             critic_feedback = self.critic.generate_response(critic_context)
             self.critic.add_to_context(critic_feedback, "assistant")
 
-            dialogue.append(f"\nCritic: {critic_feedback['content']}\n")
+            dialogue.append(f"\n ##### Critic:\n {critic_feedback['content']}\n\n")
 
             critic_feedback_to_doctor = f"Here is some feedback on your previous interaction with the patient\n{critic_feedback['content']}\nThe conversation with the patient will start again. Incorporate the feedback given into your responses"
             self.doctor.add_to_context({"role": "user", "content": critic_feedback_to_doctor}, "user")

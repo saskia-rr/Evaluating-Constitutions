@@ -169,7 +169,7 @@ def main():
 
     os.environ["OPENAI_API_KEY"] = config.openai_api_key
     client = OpenAI()
-    model = "gpt-4o"
+    model = "gpt-3.5-turbo"
     temperature = 1
     max_tokens = 1000
     max_turns = 3

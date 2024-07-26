@@ -42,18 +42,49 @@ class Patient(Agent):
 class Critic(Agent):
     pass
 
+    
 class Moderator(Agent):
-    def check_conversation_end(self, conversation):
-        moderator_context = [{"role": "user", "content": f"Here is a conversation between a doctor and a patient. Determine if the conversation has naturally concluded. Only respond with 'Yes' if the conversation has ended, or 'No' if it should continue:\n\n{Conversation.conversation_to_string(conversation)}"}]
+    def check_conversation_status(self, conversation, correct_diagnosis):
+        moderator_context = [{
+            "role": "user", 
+            "content": f"""Here is a conversation between a doctor and a patient. Analyze the conversation and provide the following information:
+            1. Has the conversation naturally concluded? (Yes/No)
+            2. Has any diagnosis been reached, even if incorrect? (Yes/No)
+            3. Has the correct diagnosis ({correct_diagnosis}) been reached? (Yes/No)
+            
+            Respond in the format: "Concluded: Yes/No, Diagnosis: Yes/No, Correct: Yes/No"
+            
+            Conversation:
+            {Conversation.conversation_to_string(conversation)}"""
+        }]
         response = self.generate_response(moderator_context)
-        return response['content'].strip().lower() == 'yes'
+        return self.parse_moderator_response(response['content'])
+    
+    def parse_moderator_response(self, response):
+        response = response.lower()
+        result = {
+            'concluded': False,
+            'diagnosis_reached': False,
+            'correct_diagnosis': False
+        }
+        
+        if 'concluded: yes' in response:
+            result['concluded'] = True
+        if 'diagnosis: yes' in response:
+            result['diagnosis_reached'] = True
+        if 'correct: yes' in response:
+            result['correct_diagnosis'] = True
+        
+        return result
 
 class Conversation:
-    def __init__(self, doctor, patient, critic, moderator):
+    def __init__(self, doctor, patient, critic, moderator, correct_diagnosis):
         self.doctor = doctor
         self.patient = patient
         self.critic = critic
         self.moderator = moderator
+        self.correct_diagnosis = correct_diagnosis
+        self.correct_diagnosis_reached = False
 
     @staticmethod
     def conversation_to_string(conversation):
@@ -78,13 +109,6 @@ class Conversation:
                 f.write(line)
         
         print(f"Full conversation saved to: {file_path}")
-
-    @staticmethod
-    def moderator_check(conversation):
-        for message in conversation:
-            if "goodbye" in message["content"].lower() or "have a great day" in message["content"].lower():
-                return True
-        return False
     
 
 
@@ -114,9 +138,25 @@ class Conversation:
                 dialogue.append(f"Doctor: {doctor_response['content']}\n\n")
 
                 # Check if the conversation turn has ended
-                if self.moderator.check_conversation_end(self.patient.conversation_context):
-                    print("Moderator: This turn of conversation has concluded.")
+                status = self.moderator.check_conversation_status(self.patient.conversation_context, self.correct_diagnosis)
+            
+                if status['concluded']:
+                    if status['diagnosis_reached']:
+                        if status['correct_diagnosis']:
+                            print("Moderator: Conversation concluded with correct diagnosis.")
+                            self.correct_diagnosis_reached = True
+                            dialogue.append("Moderator: Conversation concluded with correct diagnosis.")
+
+                        else:
+                            print("Moderator: Conversation concluded with incorrect diagnosis.")
+                            self.correct_diagnosis_reached = True
+                            dialogue.append("Moderator: Conversation concluded with incorrect diagnosis.")
+                    else:
+                        print("Moderator: Conversation concluded without a clear diagnosis.")
+                        self.correct_diagnosis_reached = True
+                        dialogue.append("Moderator: Conversation concluded without a clear diagnosis.")
                     break
+
 
             # Critic's turn after each conversation turn
             doctor_patient_dialogue = self.conversation_to_string(self.patient.conversation_context)
@@ -132,7 +172,7 @@ class Conversation:
             self.doctor.add_to_context({"role": "assistant", "content": "I understand and have acknowledged the feedback. I will incorporate it into the next turn of the conversation."}, "assistant")
 
         print("All turns completed.")
-        return self.doctor.conversation_context, self.patient.conversation_context, dialogue
+        return self.doctor.conversation_context, self.patient.conversation_context, dialogue, self.correct_diagnosis_reached
     
 
 class ExperimentRunner:
@@ -151,11 +191,15 @@ class ExperimentRunner:
         return doctor, patient, critic, moderator
 
     @staticmethod
-    def run_experiment(doctor, patient, critic, moderator, max_turns, model, experiment_name):
-        conversation = Conversation(doctor, patient, critic, moderator)
-        doctor_context, patient_context, dialogue = conversation.chat_between_agents(max_turns)
-        Conversation.save_full_conversation_to_markdown(dialogue, f"full_conversations/{model}/{experiment_name}", experiment_name)
-
+    def run_experiment(doctor, patient, critic, moderator, max_turns, model, experiment_name, correct_diagnosis):
+        conversation = Conversation(doctor, patient, critic, moderator, correct_diagnosis)
+        doctor_context, patient_context, dialogue, correct_diagnosis_reached = conversation.chat_between_agents(max_turns)
+        
+        if correct_diagnosis_reached:
+            Conversation.save_full_conversation_to_markdown(dialogue, f"full_conversations/{model}/{experiment_name}", experiment_name)
+            print(f"Correct diagnosis reached. Conversation saved for experiment: {experiment_name}")
+        else:
+            print(f"Correct diagnosis not reached. Conversation not saved for experiment: {experiment_name}")
 def main():
 
     os.environ["ANTHROPIC_API_KEY"] = config.claude_api_key
@@ -168,36 +212,41 @@ def main():
 
     # Load instructions from files
     doctor_instructions = ExperimentRunner.load_instructions('doctor_instructions.json')
-    patient_instructions = ExperimentRunner.load_instructions('patient_instructions.json')
+    patient_instructions = ExperimentRunner.load_instructions('agent_clinic_sample.json')
     critic_instructions = ExperimentRunner.load_instructions('critic_instructions.json')
     moderator_instructions = ExperimentRunner.load_instructions('moderator_instructions.json')
 
 
     # Create a list of experiments to run
-    experiments = [
-        {
-            "name": "best_practices_loose",
-            "doctor": doctor_instructions["default"],
-            "patient": patient_instructions["bedbug"],
-            "critic": critic_instructions["best_practices_loose"],
-            "moderator": moderator_instructions["default"]
-        }
-        # ,
-        # {
-        #     "name": "pirate",
-        #     "doctor": doctor_instructions["default"],
-        #     "patient": patient_instructions["carpel_tunnel"],
-        #     "critic": critic_instructions["pirate"],
-        #     "moderator": moderator_instructions["default"]
-        # },
-        #         {
-        #     "name": "selfdefined",
-        #     "doctor": doctor_instructions["default"],
-        #     "patient": patient_instructions["carpel_tunnel"],
-        #     "critic": critic_instructions["selfdefined"],
-        #     "moderator": moderator_instructions["default"]
-        # }
-    ]
+    experiments = []
+
+    for key in patient_instructions:
+        experiments.extend([
+            {
+                "name": "best_practices_loose",
+                "doctor": doctor_instructions["default"],
+                "patient": patient_instructions[key][1],
+                "critic": critic_instructions["best_practices_loose"],
+                "moderator": moderator_instructions["default"],
+                "correct_diagnosis": patient_instructions[key][0]
+            },
+            {
+                "name": "pirate",
+                "doctor": doctor_instructions["default"],
+                "patient": patient_instructions[key][1],
+                "critic": critic_instructions["pirate"],
+                "moderator": moderator_instructions["default"],
+                "correct_diagnosis": patient_instructions[key][0]
+            },
+            {
+                "name": "selfdefined",
+                "doctor": doctor_instructions["default"],
+                "patient": patient_instructions[key][1],
+                "critic": critic_instructions["selfdefined"],
+                "moderator": moderator_instructions["default"],
+                "correct_diagnosis": patient_instructions[key][0]
+            }
+        ])
 
     for experiment in experiments:
         print(f"Running experiment: {experiment['name']}")
@@ -206,9 +255,10 @@ def main():
             experiment['doctor'], experiment['patient'], experiment['critic'], experiment['moderator']
         )
         ExperimentRunner.run_experiment(
-            doctor, patient, critic, moderator, max_turns, model, experiment['name']
+            doctor, patient, critic, moderator, max_turns, model, experiment['name'], experiment['correct_diagnosis']
         )
         print(f"Experiment {experiment['name']} completed.\n")
+
 
 if __name__ == "__main__":
     main()

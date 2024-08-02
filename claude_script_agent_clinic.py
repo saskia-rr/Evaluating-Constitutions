@@ -223,29 +223,38 @@ def main():
     for key in patient_instructions:
         experiments.extend([
             {
-                "name": "best_practices_loose",
+                "name": "best_practices_detailed",
                 "doctor": doctor_instructions["default"],
                 "patient": patient_instructions[key][1],
-                "critic": critic_instructions["best_practices_loose"],
-                "moderator": moderator_instructions["default"],
-                "correct_diagnosis": patient_instructions[key][0]
-            },
-            {
-                "name": "pirate",
-                "doctor": doctor_instructions["default"],
-                "patient": patient_instructions[key][1],
-                "critic": critic_instructions["pirate"],
-                "moderator": moderator_instructions["default"],
-                "correct_diagnosis": patient_instructions[key][0]
-            },
-            {
-                "name": "selfdefined",
-                "doctor": doctor_instructions["default"],
-                "patient": patient_instructions[key][1],
-                "critic": critic_instructions["selfdefined"],
+                "critic": critic_instructions["best_practices_detailed"],
                 "moderator": moderator_instructions["default"],
                 "correct_diagnosis": patient_instructions[key][0]
             }
+            # ,
+            # {
+            #     "name": "best_practices_loose",
+            #     "doctor": doctor_instructions["default"],
+            #     "patient": patient_instructions[key][1],
+            #     "critic": critic_instructions["best_practices_loose"],
+            #     "moderator": moderator_instructions["default"],
+            #     "correct_diagnosis": patient_instructions[key][0]
+            # },
+            # {
+            #     "name": "pirate",
+            #     "doctor": doctor_instructions["default"],
+            #     "patient": patient_instructions[key][1],
+            #     "critic": critic_instructions["pirate"],
+            #     "moderator": moderator_instructions["default"],
+            #     "correct_diagnosis": patient_instructions[key][0]
+            # },
+            # {
+            #     "name": "selfdefined",
+            #     "doctor": doctor_instructions["default"],
+            #     "patient": patient_instructions[key][1],
+            #     "critic": critic_instructions["selfdefined"],
+            #     "moderator": moderator_instructions["default"],
+            #     "correct_diagnosis": patient_instructions[key][0]
+            # }
         ])
 
     for experiment in experiments:

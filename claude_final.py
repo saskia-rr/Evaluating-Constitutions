@@ -238,7 +238,7 @@ def main():
 
     # Load instructions from files
     doctor_instructions = ExperimentRunner.load_instructions('doctor_instructions.json')
-    patient_instructions = ExperimentRunner.load_instructions('agent_clinic_sample_starting_prompt_claude_temp1_3_conditions.json')
+    patient_instructions = ExperimentRunner.load_instructions('agent_clinic_sample_starting_prompt_claude_temp1.json')
     critic_instructions = ExperimentRunner.load_instructions('critic_instructions.json')
     moderator_instructions = ExperimentRunner.load_instructions('moderator_instructions.json')
 
@@ -256,38 +256,38 @@ def main():
                 "moderator": moderator_instructions["default"],
                 "correct_diagnosis": patient_instructions[key][0],
                 "initial_patient_response": patient_instructions[key][1]
-            }
+            },
                         
-           
-        ])
-#  {
-#                 "name": "empathetic_patient_temp_1",
-#                 "doctor": doctor_instructions["default"],
-#                 "patient": patient_instructions[key][1],
-#                 "critic": critic_instructions["empathetic"],
-#                 "moderator": moderator_instructions["default"],
-#                 "correct_diagnosis": patient_instructions[key][0],
-#                 "initial_patient_response": patient_instructions[key][1]
-#             },
+            {
+                "name": "empathetic_patient_temp_1",
+                "doctor": doctor_instructions["default"],
+                "patient": patient_instructions[key][1],
+                "critic": critic_instructions["empathetic"],
+                "moderator": moderator_instructions["default"],
+                "correct_diagnosis": patient_instructions[key][0],
+                "initial_patient_response": patient_instructions[key][1]
+            },
 
-#             {
-#                 "name": "doctor_role_patient_temp_1",
-#                 "doctor": doctor_instructions["default"],
-#                 "patient": patient_instructions[key][1],
-#                 "critic": critic_instructions["doctor_role"],
-#                 "moderator": moderator_instructions["default"],
-#                 "correct_diagnosis": patient_instructions[key][0],
-#                 "initial_patient_response": patient_instructions[key][1]
-#             },
-#             {
-#                 "name": "no_constitution_patient_temp_1",
-#                 "doctor": doctor_instructions["default"],
-#                 "patient": patient_instructions[key][1],
-#                 "critic": critic_instructions["no_constitution"],
-#                 "moderator": moderator_instructions["default"],
-#                 "correct_diagnosis": patient_instructions[key][0],
-#                 "initial_patient_response": patient_instructions[key][1]
-#             }
+            {
+                "name": "doctor_role_patient_temp_1",
+                "doctor": doctor_instructions["default"],
+                "patient": patient_instructions[key][1],
+                "critic": critic_instructions["doctor_role"],
+                "moderator": moderator_instructions["default"],
+                "correct_diagnosis": patient_instructions[key][0],
+                "initial_patient_response": patient_instructions[key][1]
+            },
+            {
+                "name": "no_constitution_patient_temp_1",
+                "doctor": doctor_instructions["default"],
+                "patient": patient_instructions[key][1],
+                "critic": critic_instructions["no_constitution"],
+                "moderator": moderator_instructions["default"],
+                "correct_diagnosis": patient_instructions[key][0],
+                "initial_patient_response": patient_instructions[key][1]
+            }
+                       
+        ])
         
 
 

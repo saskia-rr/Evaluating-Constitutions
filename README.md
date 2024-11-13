@@ -1,5 +1,5 @@
 # Evaluating-Constitutions
-Code for **Evaluating the role of `Constitutions' for learning from AI feedbacks** , presented at NeurIPS 2024 in the workshop on [Language Gamification](https://language-gamification.github.io//).
+Code for **Evaluating the role of `Constitutions' for learning from AI feedback** , presented at NeurIPS 2024 in the workshop on [Language Gamification](https://language-gamification.github.io//).
 
 ![dialogue generation with in-context learning from AI feedback](llm_comms_diagram.jpg)
 
@@ -21,3 +21,15 @@ To create dialogue, run:
 python claude_final.py 
 ```
 Time stamped dialogues with the relevant critic feedback at each round from the experiments can be found in the full_conversations folder
+
+
+## Citation
+```bibtex
+@article{redgate2024evaluating,
+  title={Evaluating the role of `Constitutions' for learning from AI feedback},
+  author={Saskia Redgate and Andrew Bean and Adam Mahdi},
+  journal={Advances in Neural Information Processing Systems (NeurIPS): Workshop on Language Gamefication},
+  volume={38}
+  year={2024}
+}
+```

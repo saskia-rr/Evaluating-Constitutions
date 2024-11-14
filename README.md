@@ -1,7 +1,7 @@
 # Evaluating-Constitutions
 Code for **Evaluating the role of `Constitutions' for learning from AI feedback** , presented at NeurIPS 2024 in the workshop on [Language Gamification](https://language-gamification.github.io//).
 
-![dialogue generation with in-context learning from AI feedback](llm_comms_diagram.jpg)
+![dialogue generation with in-context learning from AI feedback](llm_comms_diagram_14_11.jpg)
 
 **Evaluating the role of `Constitutions' for learning from AI feedback** explores how different "constitutions" in large language models impact the quality of text generated following AI feedback for improving patient-centered communication in doctor-patient conversations. All the code required to run the experiments for dialogue and feedback generation can be found in this repository.
 
